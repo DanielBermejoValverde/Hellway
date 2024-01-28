@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -42,10 +44,12 @@ abstract class GameObject{
             child: render(unit)
           ));
   Widget render(Size size);
+  Rect get rect=>Rect.fromLTWH(position.dx, position.dy, size.width, size.height);
 }
 class Ship extends GameObject{
-  double speed=2;
-
+  double speed=10;
+  bool goLeft=false;
+  bool goRight=false;
   Ship(Offset position): super(position,const Size(1,1));
 
   @override
@@ -59,14 +63,34 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
   int score=0;
   late Size worldSize;
   late Ship ship;
+  int prevTime=0;
   @override
   void initState(){
     super.initState();
     controller =AnimationController(vsync: this,duration: const Duration(days: 30));
-    worldSize= const Size(20,30);
-    ship=Ship(Offset(10-.5,28));
+    log("controller");
+    controller.addListener(update);
+    worldSize= const Size(6,9);
+    ship=Ship(Offset(3-.5,8));
+    prevTime=DateTime.now().millisecondsSinceEpoch;
     controller.forward();
+
   }
+
+  void update(){
+    int currentTime=DateTime.now().millisecondsSinceEpoch;
+    double deltaTime = (currentTime-prevTime)/1000.0;
+
+    if(ship.goLeft && ship.position.dx>0+0.25){
+      ship.position = Offset(ship.position.dx-ship.speed*deltaTime,ship.position.dy);
+    }
+    if(ship.goRight && ship.position.dx<worldSize.width-1){
+      ship.position = Offset(ship.position.dx+ship.speed*deltaTime,ship.position.dy);
+    }
+
+    prevTime=currentTime;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,13 +117,47 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                     }
                   ),
                 ),
-              )
+              ),
+              Row(children: [
+                Expanded(child: MoveButton(key: const Key("arrow left"),
+                        down: () =>{ship.goLeft=true,log("left down "+ship.goLeft.toString())},
+                        up: () => {ship.goLeft=false,log("left up "+ship.goLeft.toString()) },
+                    icon: Icons.arrow_circle_left_sharp),
+                ),
+                Expanded(child: MoveButton(key : const Key("arrow right"),
+                        down: () =>{ship.goRight=true,log("right down "+ship.goRight.toString())},
+                        up: () =>{ship.goRight=false,log("right up "+ship.goRight.toString()) },
+                    icon: Icons.arrow_circle_right_sharp),
+                ),
+              ],)
             ],
           ),
         ),
       ),
     );
   }
+}
+class MoveButton extends StatelessWidget{
+  void Function() down;
+  void Function() up;
+  IconData icon;
+  Color iconColor=Colors.black;
+
+  MoveButton({required Key key,required this.down,required this.up,required this.icon}):super(key:key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      child: Icon(
+        icon,
+        color: iconColor,
+        size: 64,
+      ),
+      onTapDown: (details)=>{ down(),iconColor=Colors.deepOrange},
+      onTapUp: (details)=> {up(),iconColor=Colors.black}
+    );
+  }
+  
 }
 
 
