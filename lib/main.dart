@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -52,21 +53,18 @@ class Ship extends GameObject{
   bool goLeft=false;
   bool goRight=false;
   Ship(Offset position): super(position,const Size(1,1));
-  Future<String> loadAsset() async {
-    return await rootBundle.loadString('assets/config.json');
-  }
   @override
   Widget render(Size size){
-    return const Image(image: AssetImage());
+    return const Image(image: AssetImage('assets/images/Spaceship.gif'));
   }
 }
 class EnemyShip extends GameObject{
-  double speed=10;
+  double speed=3;
   EnemyShip(Offset position):super(position,const Size(1,1));
 
   @override
   Widget render(Size size) {
-    return Container(color:Colors.purple);
+    return const Image(image: AssetImage('assets/images/EnemySpaceship.gif'));
   }
 }
 class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin{
@@ -75,15 +73,27 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
   late Size worldSize;
   late Ship ship;
   int prevTime=0;
+  static const int waves=12;
+  static const int enemiesNum=5;
+  math.Random random=math.Random();
+  late List<EnemyShip> enemyShips;
   @override
   void initState(){
     super.initState();
     controller =AnimationController(vsync: this,duration: const Duration(days: 30));
     log("controller");
     controller.addListener(update);
-    worldSize= const Size(8,12);
-    ship=Ship(Offset(4-.5,11));
+    worldSize= const Size(6,9);
+    ship=Ship(Offset(3-.5,8));
     prevTime=DateTime.now().millisecondsSinceEpoch;
+    enemyShips=[
+      EnemyShip( Offset(3-.5,1.0))
+    ];
+    for(int i=0;i<waves;i++){
+      for(int j=0;j<enemiesNum;j++){
+      enemyShips.add(EnemyShip(Offset(random.nextInt(worldSize.width.toInt())*1.0,-i*5.0)));
+      }
+    }
     controller.forward();
 
   }
@@ -98,7 +108,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     if(ship.goRight && ship.position.dx<worldSize.width-1){
       ship.position = Offset(ship.position.dx+ship.speed*deltaTime,ship.position.dy);
     }
-
+    for(EnemyShip enemyShip in enemyShips){
+      enemyShip.position=(Offset(enemyShip.position.dx,enemyShip.position.dy+enemyShip.speed*deltaTime));
+    }
     prevTime=currentTime;
   }
 
@@ -124,6 +136,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                      Size unit= Size(constraints.maxWidth/worldSize.width, constraints.maxHeight/worldSize.height);
                      List<Widget> gameObjects=[];
                      gameObjects.add(ship.renderAnim(controller,unit));
+                     gameObjects.addAll(
+                       enemyShips.map((e) => e.renderAnim(controller, unit))
+                     );
                      return Stack(children: gameObjects);
                     }
                   ),
@@ -149,10 +164,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
   }
 }
 class MoveButton extends StatelessWidget{
-  void Function() down;
-  void Function() up;
-  IconData icon;
-  Color iconColor=Colors.black;
+  final void Function() down;
+  final void Function() up;
+  final IconData icon;
 
   MoveButton({required Key key,required this.down,required this.up,required this.icon}):super(key:key);
 
@@ -161,11 +175,11 @@ class MoveButton extends StatelessWidget{
     return GestureDetector(
       child: Icon(
         icon,
-        color: iconColor,
+        color: Colors.black,
         size: 64,
       ),
-      onTapDown: (details)=>{ down(),iconColor=Colors.deepOrange},
-      onTapUp: (details)=> {up(),iconColor=Colors.black}
+      onTapDown: (details)=>{ down()},
+      onTapUp: (details)=> {up()}
     );
   }
   
