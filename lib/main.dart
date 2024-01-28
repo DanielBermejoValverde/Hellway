@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MyApp());
@@ -51,12 +52,22 @@ class Ship extends GameObject{
   bool goLeft=false;
   bool goRight=false;
   Ship(Offset position): super(position,const Size(1,1));
-
+  Future<String> loadAsset() async {
+    return await rootBundle.loadString('assets/config.json');
+  }
   @override
   Widget render(Size size){
-    return Container(color:Colors.orange);
+    return const Image(image: AssetImage());
   }
+}
+class EnemyShip extends GameObject{
+  double speed=10;
+  EnemyShip(Offset position):super(position,const Size(1,1));
 
+  @override
+  Widget render(Size size) {
+    return Container(color:Colors.purple);
+  }
 }
 class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin{
   late AnimationController controller;
@@ -70,8 +81,8 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     controller =AnimationController(vsync: this,duration: const Duration(days: 30));
     log("controller");
     controller.addListener(update);
-    worldSize= const Size(6,9);
-    ship=Ship(Offset(3-.5,8));
+    worldSize= const Size(8,12);
+    ship=Ship(Offset(4-.5,11));
     prevTime=DateTime.now().millisecondsSinceEpoch;
     controller.forward();
 
@@ -81,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     int currentTime=DateTime.now().millisecondsSinceEpoch;
     double deltaTime = (currentTime-prevTime)/1000.0;
 
-    if(ship.goLeft && ship.position.dx>0+0.25){
+    if(ship.goLeft && ship.position.dx>0){
       ship.position = Offset(ship.position.dx-ship.speed*deltaTime,ship.position.dy);
     }
     if(ship.goRight && ship.position.dx<worldSize.width-1){
