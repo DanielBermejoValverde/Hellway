@@ -1,80 +1,209 @@
-import 'dart:async';
+import 'dart:developer';
+import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hellway/ship.dart';
 
-class MyGameScreen extends StatefulWidget {
+abstract class GameObject{
+  Offset position;
+  Size size;
+  GameObject(this.position,this.size);
+  Widget renderAnim(Animation<double> animation,Size unit)=>
+      AnimatedBuilder(
+          animation: animation,
+          builder: (context,child)=>Positioned(
+              top: position.dy*unit.height,
+              left: position.dx*unit.width,
+              width: size.width*unit.width,
+              height: size.height*unit.height,
+              child: render(unit)
+          ));
+  Widget render(Size size);
+  Rect get rect=>Rect.fromLTWH(position.dx, position.dy, size.width-.2, size.height-.2);
+}
+class Ship extends GameObject{
+  double speed=10;
+  int life=3;
+  bool goLeft=false;
+  bool goRight=false;
+  Ship(Offset position): super(position,const Size(1,1));
   @override
-  _MyGameScreenState createState() => _MyGameScreenState();
+  Widget render(Size size){
+    return const Image(image: AssetImage('assets/images/Spaceship.gif'));
+  }
+}
+class EnemyShip extends GameObject{
+  double speed=3;
+  EnemyShip(Offset position):super(position,const Size(1,1));
+
+  @override
+  Widget render(Size size) {
+    return const Image(image: AssetImage('assets/images/EnemySpaceship.gif'));
+  }
 }
 
-class _MyGameScreenState extends State<MyGameScreen> {
-  double spaceshipPosition = 0.0; // Posición inicial de la nave espacial
-  double spaceshipMovement = 0.0;
-  Timer? timer; // Timer para mover la nave continuamente
-  bool isPressed = false; // Bandera para verificar si se mantiene presionado
+class GamePage extends StatefulWidget {
+  const GamePage({super.key, required this.title});
+  final String title;
+  @override
+  State<GamePage> createState() => _GamePageState();
+}
 
+class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin{
+  late AnimationController controller;
+  int punt=0;
+  late Size worldSize;
+  late Ship ship;
+  int prevTime=0;
+  int time0=0;
+  static const int waves=30;
+  static const int enemiesNum=3;
+  static const double spaceBetweenWaves=3.0;
+  math.Random random=math.Random();
+  late List<EnemyShip> enemyShips;
   @override
-  void dispose() {
-    timer?.cancel(); // Cancelar el timer al salir de la pantalla
-    super.dispose();
-  }
-  @override
-  void initState() {
+  void initState(){
     super.initState();
-    // Obtener el ancho de la pantalla y establecer la posición inicial de la nave en la mitad
+    controller =AnimationController(vsync: this,duration: const Duration(days: 30));
+    log("controller");
+    controller.addListener(update);
+    worldSize= const Size(6,9);
+    ship=Ship(Offset(3-.5,8));
+    prevTime=DateTime.now().millisecondsSinceEpoch;
+    time0=DateTime.now().millisecondsSinceEpoch;
+    enemyShips=[
+      EnemyShip( Offset(3-.5,1.0))
+    ];
+    for(int i=0;i<waves;i++){
+      for(int j=0;j<enemiesNum;j++){
+        enemyShips.add(EnemyShip(Offset(random.nextInt(worldSize.width.toInt())*1.0,-i*spaceBetweenWaves)));
+      }
+    }
+    controller.forward();
 
   }
 
-  void startMoving() {
-    timer = Timer.periodic(Duration(milliseconds: 50), (timer) {
+  void update(){
+    int currentTime=DateTime.now().millisecondsSinceEpoch;
+    double deltaTime = (currentTime-prevTime)/1000.0;
+    Rect shipRect = ship.rect;
+    List<EnemyShip> destroyedEnemyShips=[];
+    if (ship.life<=0){
+
+    }
+    if(ship.goLeft && ship.position.dx>0){
+      ship.position = Offset(ship.position.dx-ship.speed*deltaTime,ship.position.dy);
+    }
+    if(ship.goRight && ship.position.dx<worldSize.width-1){
+      ship.position = Offset(ship.position.dx+ship.speed*deltaTime,ship.position.dy);
+    }
+    for(EnemyShip enemyShip in enemyShips){
+      Rect enemyShipRect=enemyShip.rect;
+      enemyShip.position=(Offset(enemyShip.position.dx,enemyShip.position.dy+enemyShip.speed*deltaTime));
+      if(shipRect.overlaps(enemyShipRect)){
+        punt-=500;
+        ship.life--;
+        destroyedEnemyShips.add(enemyShip);
+      }
+      if(enemyShip.position.dy>=worldSize.height){
+        punt+=100;
+        destroyedEnemyShips.add(enemyShip);
+      }
+    }
+    for(EnemyShip enemyShip in destroyedEnemyShips){
       setState(() {
-        // Actualizar la posición de la nave continuamente mientras se mantiene presionado
-        if (isPressed) {
-          spaceshipPosition += spaceshipMovement;
-          (context.findRenderObject() as RenderObject).markNeedsPaint();
-        } else {
-          timer.cancel(); // Detener el movimiento si se levanta el dedo
-        }
+        enemyShips.remove(enemyShip);
       });
-    });
+    }
+    if(ship.life<=0||enemyShips.isEmpty){
+      controller.dispose();
+      Navigator.pop(context);
+    }//se acaba el juego
+
+        prevTime=currentTime;
   }
 
   @override
   Widget build(BuildContext context) {
-    spaceshipPosition = MediaQuery.of(context).size.width / 2;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Juego de Naves'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
       ),
-      body: GestureDetector(
-        onHorizontalDragDown: (_) {
-          double xPos = _.localPosition.dx;
-          // Determinar la dirección del movimiento de la nave espacial basándose en la posición X del gesto
-          if (xPos > MediaQuery.of(context).size.width / 2) {
-            // Si se toca la parte derecha de la pantalla, mueve la nave hacia la derecha
-            spaceshipMovement += 2; // Puedes ajustar el valor de desplazamiento según tu preferencia
-          } else {
-            // Si se toca la parte izquierda de la pantalla, mueve la nave hacia la izquierda
-            spaceshipMovement -= 2; // Puedes ajustar el valor de desplazamiento según tu preferencia
-          }
-          isPressed = true; // Bandera cuando se presiona el dedo
-          startMoving(); // Comenzar el movimiento continuo de la nave
-        },
-        onHorizontalDragEnd: (_) {
-          isPressed = false; // Bandera cuando se levanta el dedo
-        },
-          child: Container(
-            color: Colors.black, // Fondo negro para representar el espacio
-            height: MediaQuery.of(context).size.height,
-            child: CustomPaint(
-              size: Size(MediaQuery.of(context).size.width, 50), // Tamaño del dibujo de la nave
-              painter: ShipPainter(spaceshipPosition-25), // Llama al CustomPainter con la posición de la nave
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8.0,0,8,0),
+          child: Column(
+            children: [
+              Row(
+                children:[
+
+                  const Image(image: AssetImage('assets/images/Spaceship.gif'),
+                      width:32,height: 32,alignment: Alignment.centerLeft),
+                  Text("x ${ship.life}",style: const TextStyle(color: Colors.black,fontSize: 32)
+                      ,textAlign: TextAlign.left),
+                  Expanded(child: Text("Puntuación: $punt",style: const TextStyle(color: Colors.pinkAccent,fontSize: 32)
+                      ,textAlign: TextAlign.right))
+              ]),
+              Container(
+                color: Colors.blue[900],
+                child: AspectRatio(
+                  aspectRatio: worldSize.aspectRatio,
+                  child: LayoutBuilder(
+                      builder: (context,constraints){
+                        Size unit= Size(
+                            constraints.maxWidth/worldSize.width,
+                            constraints.maxHeight/worldSize.height);
+                        List<Widget> gameObjects=[];
+                        gameObjects.add(ship.renderAnim(controller,unit));
+                        gameObjects.addAll(
+                            enemyShips.map((e) => e.renderAnim(controller, unit))
+                        );
+                        return Stack(children: gameObjects);
+                      }
+                  ),
+                ),
               ),
-                // Otros elementos podrían ir encima de la nave si es necesario
-            ),
+              Row(children: [
+                Expanded(child: MoveButton(key: const Key("arrow left"),
+                    down: () =>{ship.goLeft=true,log("left down ${ship.goLeft}")},
+                    up: () => {ship.goLeft=false,log("left up ${ship.goLeft}") },
+                    icon: Icons.arrow_circle_left_sharp),
+                ),
+                Expanded(child: MoveButton(key : const Key("arrow right"),
+                    down: () =>{ship.goRight=true,log("right down ${ship.goRight}")},
+                    up: () =>{ship.goRight=false,log("right up ${ship.goRight}") },
+                    icon: Icons.arrow_circle_right_sharp),
+                ),
+              ],)
+            ],
+          ),
         ),
-      );
+      ),
+    );
   }
+}
+class MoveButton extends StatelessWidget{
+  final void Function() down;
+  final void Function() up;
+  final IconData icon;
+
+  const MoveButton({required Key key,required this.down,required this.up,required this.icon}):super(key:key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (details)=>{ down()},
+      onTapUp: (details)=> {up()},
+      onTapCancel: up,
+      child: Container(
+        color: Colors.teal,
+        child:Icon(
+        icon,
+        color: Colors.black,
+        size: 64,
+      ),
+    ),
+    );
+  }
+
 }
