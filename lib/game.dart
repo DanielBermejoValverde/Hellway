@@ -60,6 +60,7 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
   static const double spaceBetweenWaves=3.0;
   math.Random random=math.Random();
   late List<EnemyShip> enemyShips;
+  late String dialog;
   @override
   void initState(){
     super.initState();
@@ -79,7 +80,6 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
       }
     }
     controller.forward();
-
   }
 
   void update(){
@@ -114,14 +114,35 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
         enemyShips.remove(enemyShip);
       });
     }
-    if(ship.life<=0||enemyShips.isEmpty){
+    if(ship.life<=0){
       controller.dispose();
-      Navigator.pop(context);
-    }//se acaba el juego
+      dialog="DERROTA";
+      endDialog();
+    }//se acaba el juego con derrota
+
+    if(enemyShips.isEmpty){
+      controller.dispose();
+      dialog="Victoria";
+      endDialog();
+    }//se acaba el juego con victoria
 
         prevTime=currentTime;
   }
+  Future endDialog()=>showDialog(context: context,
+      builder: (context)=>AlertDialog(
+        title: Text(dialog,textAlign: TextAlign.center,),
+        content: Text("Puntuación: $punt"),
+        actions: [
+          Expanded(child: ElevatedButton(
+            child: Text("Volver al inicio"),
+            onPressed: ()=>{
+              Navigator.of(context).pop(),
+              Navigator.of(context).pop()},
+          )),
 
+        ],
+      )
+  );
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,7 +166,7 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
                       ,textAlign: TextAlign.right))
               ]),
               Container(
-                color: Colors.blue[900],
+                color: Colors.black87,
                 child: AspectRatio(
                   aspectRatio: worldSize.aspectRatio,
                   child: LayoutBuilder(
@@ -205,5 +226,4 @@ class MoveButton extends StatelessWidget{
     ),
     );
   }
-
 }
