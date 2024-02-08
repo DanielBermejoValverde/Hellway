@@ -1,6 +1,6 @@
 # hellway
 
-Arcade car game with flutter
+Arcade ship game with flutter
 
 ## Getting Started
 
