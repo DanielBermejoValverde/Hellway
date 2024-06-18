@@ -65,7 +65,6 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
   void initState(){
     super.initState();
     controller =AnimationController(vsync: this,duration: const Duration(days: 30));
-    log("controller");
     controller.addListener(update);
     worldSize= const Size(6,9);
     ship=Ship(Offset(3-.5,8));
@@ -87,9 +86,6 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
     double deltaTime = (currentTime-prevTime)/1000.0;
     Rect shipRect = ship.rect;
     List<EnemyShip> destroyedEnemyShips=[];
-    if (ship.life<=0){
-
-    }
     if(ship.goLeft && ship.position.dx>0){
       ship.position = Offset(ship.position.dx-ship.speed*deltaTime,ship.position.dy);
     }
@@ -122,7 +118,7 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
 
     if(enemyShips.isEmpty){
       controller.dispose();
-      dialog="Victoria";
+      dialog="VICTORIA";
       endDialog();
     }//se acaba el juego con victoria
 
@@ -131,7 +127,11 @@ class _GamePageState extends State<GamePage> with SingleTickerProviderStateMixin
   Future endDialog()=>showDialog(context: context,
       builder: (context)=>AlertDialog(
         title: Text(dialog,textAlign: TextAlign.center,),
-        content: Text("Puntuación: $punt"),
+        content: Column(
+          children:[
+            Text("Puntuación: $punt"),
+          ],
+        ),
         actions: [
           Expanded(child: ElevatedButton(
             child: Text("Volver al inicio"),
